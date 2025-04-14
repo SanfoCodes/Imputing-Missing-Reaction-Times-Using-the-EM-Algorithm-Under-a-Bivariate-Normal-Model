@@ -1,6 +1,5 @@
 # Imputing-Missing-Reaction-Times-Using-the-EM-Algorithm-Under-a-Bivariate-Normal-Model
 
-# Imputing Missing Reaction Times Using the EM Algorithm Under a Bivariate Normal Model
 
 This repository contains an R Markdown analysis where missing reaction time data for two stimuli (**Stimulus A** and **Stimulus B**) is imputed using the Expectation-Maximization (EM) algorithm under the assumption of a bivariate normal distribution.
 
