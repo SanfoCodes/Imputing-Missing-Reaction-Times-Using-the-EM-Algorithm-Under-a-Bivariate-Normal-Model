@@ -1,0 +1,194 @@
+---
+title: "Imputing-Missing-Reaction-Times-Using-the-EM-Algorithm-Under-a-Bivariate-Normal-Model"
+output: word_document
+date: "2025-04-13"
+---
+
+```{r}
+# Load required libraries
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+```
+
+```{r}
+# Step 1: Load and prepare data
+url <- "https://www2.stat.duke.edu/~pdh10/FCBS/Exercises/interexp.dat"
+raw_data <- read.table(url, header = FALSE, col.names = c("Stimulus_A", "Stimulus_B"))
+raw_data[raw_data == "."] <- NA
+raw_data <- data.frame(lapply(raw_data, as.numeric))
+
+# Remove rows with both A and B missing
+raw_data <- raw_data[!(is.na(raw_data$Stimulus_A) & is.na(raw_data$Stimulus_B)), ]
+```
+
+```{r}
+# Step 2: Separate complete and incomplete cases
+complete_cases <- na.omit(raw_data)
+only_A <- raw_data[!is.na(raw_data$Stimulus_A) & is.na(raw_data$Stimulus_B), ]
+only_B <- raw_data[is.na(raw_data$Stimulus_A) & !is.na(raw_data$Stimulus_B), ]
+```
+
+```{r}
+# Step 3: Initialize EM parameters
+mu <- colMeans(complete_cases)
+sigma <- cov(complete_cases)
+```
+
+```{r}
+# Step 4: Log-likelihood function (robust)
+log_likelihood <- function(data, mu, sigma) {
+  ll <- 0
+  for (i in 1:nrow(data)) {
+    x <- data[i, ]
+    observed <- !is.na(x)
+    if (sum(observed) == 0) next
+
+    x_obs <- x[observed]
+    mu_obs <- mu[observed]
+    sigma_obs <- sigma[observed, observed]
+
+    if (length(x_obs) == 1) sigma_obs <- matrix(sigma_obs, nrow = 1, ncol = 1)
+    if (det(sigma_obs) <= 0 || any(is.na(sigma_obs))) next
+
+    diff <- as.matrix(x_obs - mu_obs)
+    ll <- ll - 0.5 * (
+      log(det(sigma_obs)) +
+      t(diff) %*% solve(sigma_obs) %*% diff +
+      length(x_obs) * log(2 * pi)
+    )
+  }
+  return(ll)
+}
+```
+
+```{r}
+# Step 5: Run EM algorithm
+data_em <- raw_data
+prev_ll <- -Inf
+tol <- 1e-4
+
+for (iter in 1:100) {
+  for (i in 1:nrow(data_em)) {
+    a <- data_em$Stimulus_A[i]
+    b <- data_em$Stimulus_B[i]
+
+    if (is.na(a) && !is.na(b)) {
+      data_em$Stimulus_A[i] <- mu[1] + (sigma[1, 2] / sigma[2, 2]) * (b - mu[2])
+    } else if (!is.na(a) && is.na(b)) {
+      data_em$Stimulus_B[i] <- mu[2] + (sigma[2, 1] / sigma[1, 1]) * (a - mu[1])
+    }
+  }
+
+  mu_new <- colMeans(data_em)
+  sigma_new <- cov(data_em)
+  ll_new <- log_likelihood(raw_data, mu_new, sigma_new)
+
+  if (is.na(ll_new)) {
+    cat("⚠️ Log-likelihood returned NA. Stopping early.\n")
+    break
+  }
+
+  cat(sprintf("Iteration %d: log-likelihood = %.4f\n", iter, ll_new))
+  if (abs(ll_new - prev_ll) < tol) break
+
+  mu <- mu_new
+  sigma <- sigma_new
+  prev_ll <- ll_new
+}
+```
+
+```{r}
+# Step 6: Final cleanup and labeling
+data_em$Source <- ifelse(is.na(raw_data$Stimulus_A) | is.na(raw_data$Stimulus_B), "Imputed", "Observed")
+data_em <- data_em[complete.cases(data_em), ]  # ensure fully imputed
+```
+
+```{r}
+# Step 7: Compare stats
+before_stats <- summarise(complete_cases,
+  mean_A = mean(Stimulus_A),
+  var_A = var(Stimulus_A),
+  mean_B = mean(Stimulus_B),
+  var_B = var(Stimulus_B)
+)
+
+after_stats <- summarise(data_em,
+  mean_A = mean(Stimulus_A),
+  var_A = var(Stimulus_A),
+  mean_B = mean(Stimulus_B),
+  var_B = var(Stimulus_B)
+)
+
+comparison <- rbind(
+  cbind(Variable = "Stimulus_A", Before_Mean = before_stats$mean_A, Before_Var = before_stats$var_A,
+        After_Mean = after_stats$mean_A, After_Var = after_stats$var_A),
+  cbind(Variable = "Stimulus_B", Before_Mean = before_stats$mean_B, Before_Var = before_stats$var_B,
+        After_Mean = after_stats$mean_B, After_Var = after_stats$var_B)
+)
+
+cat("\n📊 Comparison of Means and Variances:\n")
+print(comparison)
+```
+
+```{r}
+# Step 8: Visualizations
+
+# Histograms
+p1 <- ggplot(data_em, aes(x = Stimulus_A, fill = Source)) +
+  geom_histogram(alpha = 0.6, bins = 10, position = 'identity') +
+  theme_minimal() + labs(title = "Histogram - Stimulus A")
+
+p2 <- ggplot(data_em, aes(x = Stimulus_B, fill = Source)) +
+  geom_histogram(alpha = 0.6, bins = 10, position = 'identity') +
+  theme_minimal() + labs(title = "Histogram - Stimulus B")
+
+# Boxplots
+p3 <- ggplot(data_em, aes(x = Source, y = Stimulus_A, fill = Source)) +
+  geom_boxplot() + theme_minimal() + labs(title = "Boxplot - Stimulus A")
+
+p4 <- ggplot(data_em, aes(x = Source, y = Stimulus_B, fill = Source)) +
+  geom_boxplot() + theme_minimal() + labs(title = "Boxplot - Stimulus B")
+
+# Scatter plots
+p5 <- ggplot(complete_cases, aes(x = Stimulus_A, y = Stimulus_B)) +
+  geom_point(color = "steelblue") +
+  theme_minimal() + labs(title = "Scatter Plot (Before Imputation)")
+
+p6 <- ggplot(data_em, aes(x = Stimulus_A, y = Stimulus_B, color = Source)) +
+  geom_point() + theme_minimal() + labs(title = "Scatter Plot (After Imputation)")
+```
+
+```{r}
+# Combine all plots
+# Step 8: Visualizations (One plot at a time)
+
+# Histogram - Stimulus A
+print(p1)
+```
+
+```{r}
+# Histogram - Stimulus B
+print(p2)
+```
+
+```{r}
+# Boxplot - Stimulus A
+print(p3)
+```
+
+```{r}
+# Boxplot - Stimulus B
+print(p4)
+```
+
+```{r}
+# Scatter Plot - Before Imputation
+print(p5)
+```
+
+```{r}
+# Scatter Plot - After Imputation
+print(p6)
+
+```
