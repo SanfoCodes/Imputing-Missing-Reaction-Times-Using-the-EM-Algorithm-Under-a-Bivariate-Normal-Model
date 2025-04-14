@@ -38,5 +38,4 @@ Edit
 git clone https://github.com/your-username/em-imputation-reaction-times.git
 Open the .Rmd file in RStudio.
 
-## Authors
-Arpitha Thippeswamy (T00749833)
+
