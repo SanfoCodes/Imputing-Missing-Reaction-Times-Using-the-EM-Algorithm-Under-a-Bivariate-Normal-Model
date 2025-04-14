@@ -29,13 +29,5 @@ Make sure the following R libraries are installed:
 library(ggplot2)
 library(gridExtra)
 library(dplyr)
- How to Use
-Clone the repository:
-
-bash
-Copy
-Edit
-git clone https://github.com/your-username/em-imputation-reaction-times.git
-Open the .Rmd file in RStudio.
 
 
