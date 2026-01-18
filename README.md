@@ -5,7 +5,7 @@ This repository contains an R Markdown analysis where missing reaction time data
 
 ## 📁 Project Overview
 
-- 📄 **Title**: Imputing Missing Reaction Times Using the EM Algorithm  
+- 📄 **Title**: Imputing Missng Reaction Times Using the EM Algorithm  
 - 🧪 **Method**: Expectation-Maximization (EM) Algorithm  
 - 📊 **Data**: Reaction time dataset from [Duke University](https://www2.stat.duke.edu/~pdh10/FCBS/Exercises/interexp.dat)
 
