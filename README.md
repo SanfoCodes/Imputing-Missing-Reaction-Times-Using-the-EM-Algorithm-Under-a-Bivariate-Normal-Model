@@ -30,4 +30,7 @@ library(ggplot2)
 library(gridExtra)
 library(dplyr)
 
+##local dev
+1. open README.md on your local 
+
 
